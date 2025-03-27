@@ -34,6 +34,10 @@ Cur=-discharge(2,:)';%电流
 Vot=discharge(3,:)';%测量得到的端电压
 RSOC=discharge(4,:)';%SOC真实值-安时法计算得到
 T=length(tm)-1;%时间
+t=0:0.1:length(tm)/10-0.1;
+% Define warmpup start position
+warmup_idx = find(abs(RSOC - 0.99) < 1e-6);
+warmup_t = t(warmup_idx);
 %% ocv-soc关系
 x=OCV_SOC(2,:);%SOC
 y=OCV_SOC(1,:);%OCV
@@ -62,34 +66,44 @@ for i=1:T
     P0=(eye(3)-K(:,i)*H(i,:))*P;%后验状态误差协方差
 end
 %% 画图
-t=0:0.1:length(tm)/10-0.1;
+% 误差计算
+V_error=Vot-Vekf';
+SOC_error=RSOC-Xekf(3,:)';
+SOC_error_mean=mean(abs(SOC_error(warmup_idx:end)));
+SOC_error_max=max(abs(SOC_error(warmup_idx:end)));
+SOC_error_rmse=sqrt(mean(SOC_error(warmup_idx:end).^2));
+fprintf('SOC—RMSE: %.4f\n', SOC_error_rmse);
+V_error_rmse = sqrt(mean(V_error(warmup_idx:end).^2)); % 端电压 RMSE
+fprintf('端电压均方根误差（RMSE）：%.4f\n', V_error_rmse);
+% 电压图
 figure(1);
 plot(t,Vot,'-k',t,Vekf,'-r','lineWidth',2); grid on
+hold on;
+xline(warmup_t,'--b','99% SOC');
 legend('真实值','估计值-EKF');
 ylabel('端电压','Fontsize', 16)
 xlabel('时间(s)', 'Fontsize', 16)
-
+% SOC图
 figure(2);
 plot(t,RSOC,'-k',t,Xekf(3,:),'-r','lineWidth',2); grid on
+hold on;
+xline(warmup_tm,'--b','99% SOC');
 legend('真实值','估计值-EKF');
 ylabel('SOC','Fontsize', 16)
 xlabel('时间(s)', 'Fontsize', 16)
-V_error=Vot-Vekf';
-SOC_error=RSOC-Xekf(3,:)';
-SOC_error_mean=mean(abs(SOC_error(5000:end)));
-SOC_error_max=max(abs(SOC_error(5000:end)));
-SOC_error_rmse=sqrt(mean(SOC_error(5000:end).^2));
-fprintf('SOC—RMSE: %.4f\n', SOC_error_rmse);
-V_error_rmse = sqrt(mean(V_error(5000:end).^2)); % 端电压 RMSE
-fprintf('端电压均方根误差（RMSE）：%.4f\n', V_error_rmse);
-
+% 电压误差图
 figure(3);
 plot(t,V_error,'-k','lineWidth',2); grid on
+hold on;
+xline(warmup_tm,'--b','99% SOC');
 legend('端电压误差 ');
 ylabel('端电压误差','Fontsize', 16)
 xlabel('时间(s)', 'Fontsize', 16)
+% SOC误差图
 figure(4);
 plot(t,SOC_error,'-k','lineWidth',2); grid on
+hold on;
+xline(warmup_tm,'--b','99% SOC');
 legend('SOC误差');
 ylabel('SOC误差','Fontsize', 16)
 xlabel('时间(s)', 'Fontsize', 16)

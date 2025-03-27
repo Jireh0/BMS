@@ -1,26 +1,32 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
+import os
 
-# load data
-def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, warmup = 5000, poly_order = 8):
+
+def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, poly_order = 8):
     
-    # load data
-    R0 = sio.loadmat(f'{data_path}/R0.mat')['R0'].item()
-    R1 = sio.loadmat(f'{data_path}/R1.mat')['R1'].item() + 0.0007
-    R2 = sio.loadmat(f'{data_path}/R2.mat')['R2'].item() + 0.0005
-    C1 = sio.loadmat(f'{data_path}/C1.mat')['C1'].item()
-    C2 = sio.loadmat(f'{data_path}/C2.mat')['C2'].item()
-    discharge = sio.loadmat(f'{data_path}/discharge.mat')['discharge'] 
-    OCV_SOC = sio.loadmat(f'{data_path}/OCV_SOC.mat')['OCV_SOC']
+    try:
+        # 数据加载
+        R0 = sio.loadmat(f'{data_path}/R0.mat')['R0'].item()
+        R1 = sio.loadmat(f'{data_path}/R1.mat')['R1'].item() + 0.0007
+        R2 = sio.loadmat(f'{data_path}/R2.mat')['R2'].item() + 0.0005
+        C1 = sio.loadmat(f'{data_path}/C1.mat')['C1'].item()
+        C2 = sio.loadmat(f'{data_path}/C2.mat')['C2'].item()
+        discharge = sio.loadmat(f'{data_path}/discharge.mat')['discharge'] 
+        OCV_SOC = sio.loadmat(f'{data_path}/OCV_SOC.mat')['OCV_SOC']
+    except FileNotFoundError:
+        print(os.getcwd())
 
-    # data extraction and fit
+    # 数据提取和拟合
     tm = discharge[0,:].T
     Cur = -discharge[1,:].T
     Vot = discharge[2,:].T
     RSOC = discharge[3,:].T
     T = len(tm) - 1
     t = np.arange(len(tm)) * Ts    #生成等距Ts的时间戳
+    warmup_idx = np.where(abs(RSOC - 0.99) < 1e-6)[0].item()
+    warmup_t = t[warmup_idx].item()
 
     x = OCV_SOC[1,:]
     y = OCV_SOC[0,:]
@@ -68,10 +74,10 @@ def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, wa
     # === 6. 误差分析 ===
     V_error = Vot - Vekf
     SOC_error = abs(RSOC - X[2, :])
-    SOC_mae = np.mean(np.abs(SOC_error[warmup:]))
-    SOC_rmse = np.sqrt(np.mean(SOC_error[warmup:]**2))
-    SOC_max = np.max(np.abs(SOC_error[warmup:]))
-    V_rmse = np.sqrt(np.mean(V_error[warmup:]**2))
+    SOC_mae = np.mean(np.abs(SOC_error[warmup_idx:]))
+    SOC_rmse = np.sqrt(np.mean(SOC_error[warmup_idx:]**2))
+    SOC_max = np.max(np.abs(SOC_error[warmup_idx:]))
+    V_rmse = np.sqrt(np.mean(V_error[warmup_idx:]**2))
 
     # === 7. 输出结果 ===
     print(f"SOC MAE:  {SOC_mae:.5f}")
@@ -83,6 +89,7 @@ def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, wa
     plt.figure(figsize=(10, 4))
     plt.plot(t, Vot, label="True Voltage")
     plt.plot(t, Vekf, label="Estimated Voltage-EKF", linestyle='--')
+    plt.axvline(warmup_t, color='r', linestyle='--', label="99% SOC")
     plt.title("Voltage")
     plt.xlabel("Time (s)")
     plt.ylabel("Voltage (V)")
@@ -93,6 +100,7 @@ def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, wa
     plt.figure(figsize=(10, 4))
     plt.plot(t, RSOC, label="True SOC")
     plt.plot(t, X[2, :], label="Estimated SOC-EKF", linestyle='--')
+    plt.axvline(warmup_t, color='r', linestyle='--', label="99% SOC")
     plt.title("SOC")
     plt.xlabel("Time (s)")
     plt.ylabel("SOC")
@@ -103,7 +111,7 @@ def ekf_soc_estimation(data_path = 'matlab/EKF', Ts = 0.1, Qn = 30.23 * 3600, wa
 
     plt.figure(figsize=(10, 4))
     plt.plot(t, SOC_error, label="SOC Error")
-    plt.axvline(warmup * Ts, color='r', linestyle='--', label="warmup start point")
+    plt.axvline(warmup_t, color='r', linestyle='--', label="99% SOC")
     plt.title("SOC Absolte Error")
     plt.xlabel("Time (s)")
     plt.ylabel("Absolute Error")
