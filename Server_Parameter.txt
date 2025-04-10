@@ -1,0 +1,12 @@
+服务器参数
+
+物理服务器          Dell PowerEdge R740
+IP                 192.168.1.222
+远程管理方式        SSH (port: 22, user: root)
+数据库             ClickHouse(port: 8123 HTTP/ 9000 TCP)
+CPU                Intel(R) Xeon(R) Gold 6130 CPU @ 2.10GHz
+                   2颗CPU，每颗16核，共32核，支持HT，共64线程
+                   
+
+
+

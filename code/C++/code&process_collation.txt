@@ -1,0 +1,4 @@
+2025/3/28
+此文档用于梳理BMS大数据处理部分的旧代码，多由C++写成
+
+KgGlobalData.cpp & KgGlobalData.h
