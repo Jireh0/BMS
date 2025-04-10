@@ -1,0 +1,31 @@
+2025/03/27 Update Notes:
+
+为MATLAB和Python的EKF版本都增加了99%的SOC基准线，同时以那个下标开始作为warmup_idx.
+我们做了如下尝试
+
+1. 在MATLAB中，我们使用了
+    find(abs(RSOC-0.99) <1e-6) 来寻找指标 warmup_idx 以及 warmup_t.
+同时，我们使用了
+    xline(warmup_t, '--b', '99% SOC') 来标出 99% SOC的垂直基准线
+
+2. 在Python版本中，我们做了类似的事:
+    首先我们使用了 numpy.where() 来达到类似的效果, 这里有一些使用的笔记
+    numpy(condition, [x, y]) --> 满足condition的执行x，其余的执行y
+    如 
+    >>>import numpy as np
+    >>>a = np.range(10)
+    >>>np.where(a<5, a*10, a)
+    [0 1 2 3 4 50 60 70 80 90]
+    如果是不加[x,y],则返回一个tuple (np.__version__显示为1.22.4版本)
+    >>>np.where(a<5)
+    >>>(array([0, 1, 2, 3, 4], dtype=int64),)
+    需要使用np.where(a<5)[0]来提取出[0,1,2,3,4]
+
+    其次，在numpy中的一维数组是没有行列之分(axis = 0 表示垂直， axis = 1 表示水平),
+    所以打印a.shape或np.where(a<5)[0].shape显示的都是(10,)和(5,).
+
+    但可以使用reshape将其升维，这样就有行列之分了，如a.reshape(1,-1)或reshape(-1,1), 
+    -1表示列数暂时不定，根据行数决定列数.
+
+    最后，我们用了一个try...except语句来处理加载数据路径的问题，如果在加载数据时，因为路径
+    问题导致的错误会输出当前的路径从而提供参考
