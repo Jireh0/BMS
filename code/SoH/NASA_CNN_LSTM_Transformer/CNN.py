@@ -167,6 +167,7 @@ for epoch in range(1000):
         awp.attack()
         out_adv = model(batch_x)
         loss_adv = criterion(out_adv, batch_y)
+        loss_adv.backward()
         awp.restore()
 
     avg_epoch_loss = epoch_loss / len(train_loader)
